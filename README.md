@@ -145,8 +145,3 @@ python tests/run_with_lupa.py
 ```
 
 The tests check the import, export and build logic and the calls made to each addon's API. They can't check how the window looks or how the real addons behave, so test in game too.
-
-## Notes
-
-- `## Interface: 20506` matches TBC Anniversary patch 2.5.6. Bump it in `UIImport.toc` when Blizzard patches.
-- Each character has its own active profile in these addons, and ElvUI's private settings are per character. Run the import once on each character that should use the pack.
