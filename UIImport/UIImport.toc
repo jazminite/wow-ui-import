@@ -1,0 +1,18 @@
+## Interface: 20506
+## Title: UI Import
+## Notes: Paste one string to set up ElvUI, Plater, TipTac, Details! and more.
+## Author: Jazminite
+## Version: 0.1.0
+## SavedVariables: UIImportDB
+## OptionalDeps: ElvUI, Plater, Details, TipTac
+
+Core.lua
+Codec.lua
+
+Modules\ElvUI.lua
+Modules\Plater.lua
+Modules\TipTac.lua
+Modules\Details.lua
+
+Packs.lua
+UI.lua
