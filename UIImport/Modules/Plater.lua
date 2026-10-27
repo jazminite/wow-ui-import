@@ -101,6 +101,11 @@ UII:RegisterModule({
 				P.db.profile[key] = value
 			end
 		end
-		return true, ("profile \"%s\""):format(name)
+
+		local message = ("profile \"%s\""):format(name)
+		if ns.DisableElvUINamePlates and ns.DisableElvUINamePlates() then
+			message = message .. ", ElvUI nameplates turned off so Plater can run"
+		end
+		return true, message
 	end,
 })

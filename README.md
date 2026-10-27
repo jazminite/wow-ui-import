@@ -21,17 +21,28 @@ Copy the `UIImport` folder into your AddOns folder:
 World of Warcraft\_anniversary_\Interface\AddOns\UIImport
 ```
 
+## Included packs
+
+| Pack | Addons | Needs |
+|---|---|---|
+| Fojji DPS / Tank | ElvUI ([Fojji - ElvUI Standard](https://wago.io/Fojji-ElvUI)), Plater ([Fojji - Plater Profile](https://wago.io/Fojji-Plater)) | [FojjiCore](https://curseforge.com/wow/addons/fojjicore) for fonts and textures |
+| Fojji Healer | ElvUI ([Fojji - ElvUI Healer](https://wago.io/Fojji-ElvUI-Healer)), Plater ([Fojji - Plater Profile](https://wago.io/Fojji-Plater)) | [FojjiCore](https://curseforge.com/wow/addons/fojjicore) for fonts and textures |
+
+Pick one with its button at the top of the `/uii` window. Fojji made these profiles; they're copied from the Wago pages linked above.
+
+The Fojji ElvUI profiles need **ElvUI v15.19 or newer**. That release changed ElvUI's export format from `!E1!` to `!E2!`, and older versions can't read the new strings.
+
 ## Importing a pack
 
 1. Type `/uii` (or `/uiimport`).
-2. Paste a UI Import string (it starts with `!UII:1!`). The window lists the addons in the pack and whether each one is ready on this character.
+2. Paste a UI Import string (it starts with `!UII:1!`), or click one of the included packs. The window lists the addons in the pack and whether each one is ready on this character. It also warns you if the pack needs another addon, such as a font pack, that isn't loaded.
 3. Pick a profile name. Each addon gets a profile with that name. If a profile with that name already exists, it is replaced.
 4. Untick anything you don't want, then click **Import Pack** and confirm.
 5. Reload when asked.
 
 Addons that aren't installed or enabled are skipped, and the rest still import. You can install the missing addon later and import the same string again.
 
-The import also marks ElvUI as installed on the character, so ElvUI's install wizard doesn't open after the reload.
+The import also marks ElvUI as installed on the character, so ElvUI's install wizard doesn't open after the reload. Importing a Plater profile turns ElvUI's own nameplates off, even if the pack has no ElvUI part. ElvUI's nameplates and Plater can't run together: ElvUI asks on every login which one to disable, and both draw on the same nameplates until you answer.
 
 ## Making a pack
 
@@ -42,10 +53,24 @@ Type `/uii build`. For each addon you tick, you can:
 
 Click **Create String**, click the result and press Ctrl+C.
 
-To ship a pack with the addon itself, add it to `UIImport/Packs.lua`. It then shows up as a one-click button in the import window:
+To ship a pack with the addon itself, register it in `UIImport/Packs.lua`, or in its own file under `UIImport/Packs/` that you add to the `.toc`. It then shows up as a one-click button in the import window. You can register a UI Import string:
 
 ```lua
 UII:RegisterPack("Jazminite's UI", "!UII:1!...")
+```
+
+Or register each addon's own export string directly. This way you don't need to go into the game to build the pack, and it's easy to swap in an updated string later. `UIImport/Packs/Fojji.lua` is an example:
+
+```lua
+UII:RegisterPack({
+	name = "My UI",
+	author = "Me",
+	requires = { { addon = "SharedMedia", why = "fonts" } }, -- optional: warns when it isn't loaded
+	addons = {
+		ElvUI = { strings = { "!E2!..." } },
+		Plater = { strings = { "!PLATER:2!..." } },
+	},
+})
 ```
 
 ### Where each addon's own export string comes from

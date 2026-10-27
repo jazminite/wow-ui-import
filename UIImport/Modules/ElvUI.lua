@@ -1,9 +1,12 @@
 local _, ns = ...
 local UII = ns.UII
 
--- ElvUI export strings start with !E2! and carry one of four types:
--- profile, private (per character), global (account) or filters.
--- An entry is { strings = { ... } } holding any mix of them.
+-- ElvUI export strings carry one of four types: profile, private (per
+-- character), global (account) or filters. An entry is { strings = { ... } }
+-- holding any mix of them.
+--
+-- ElvUI changed its string format from !E1! (LibDeflate) to !E2!
+-- (C_EncodingUtil) in 2026, and each ElvUI version reads only its own.
 local EXPORT_TYPES = { "profile", "private", "global" }
 
 local function GetElvUI()
@@ -18,18 +21,56 @@ local function GetElvUI()
 	return E, D
 end
 
--- ElvUI strips install_complete from imported private settings, which would
--- reopen its install wizard after the reload. Mark this character installed.
-local function MarkInstalled(E)
+-- Private settings live in two places after an import: E.private (the table
+-- ElvUI loaded) and ElvPrivateDB (which an imported private string replaces,
+-- and which is what gets saved). Change both.
+local function SetPrivate(E, change)
 	if E.private then
-		E.private.install_complete = E.version
+		change(E.private)
 	end
 	local keys = ElvPrivateDB and ElvPrivateDB.profileKeys
 	local key = keys and keys[E.mynameRealm]
 	local stored = key and ElvPrivateDB.profiles and ElvPrivateDB.profiles[key]
-	if stored then
-		stored.install_complete = E.version
+	if stored and stored ~= E.private then
+		change(stored)
 	end
+end
+
+-- ElvUI strips install_complete from imported private settings, which would
+-- reopen its install wizard after the reload. Mark this character installed.
+local function MarkInstalled(E)
+	SetPrivate(E, function(private)
+		private.install_complete = E.version
+	end)
+end
+
+-- ElvUI's nameplates and Plater can't run together: ElvUI asks on every login
+-- which to disable, and both draw on the same plates until you answer. The
+-- Plater module calls this after setting up Plater. Returns true if ElvUI's
+-- nameplates were on.
+function ns.DisableElvUINamePlates()
+	local E = ElvUI and ElvUI[1]
+	if not (E and E.private and E.private.nameplates and E.private.nameplates.enable) then
+		return false
+	end
+	SetPrivate(E, function(private)
+		private.nameplates = private.nameplates or {}
+		private.nameplates.enable = false
+	end)
+	return true
+end
+
+-- Explains a string the installed ElvUI can't read because of the format
+-- change, or returns nil.
+local function FormatProblem(E, D, str)
+	local format = tonumber(str:match("^!E(%d+)!"))
+	if not format or not D.GetImportStringType or D:GetImportStringType(str) ~= "" then
+		return
+	end
+	if format >= 2 then
+		return ("it needs a newer ElvUI than the installed v%s. Update ElvUI, then import again"):format(E.versionString or tostring(E.version))
+	end
+	return "it was exported from an old ElvUI that this version can't read. Get a fresh export of it"
 end
 
 UII:RegisterModule({
@@ -76,9 +117,15 @@ UII:RegisterModule({
 			return false, D
 		end
 
-		local imported, failed = {}, 0
+		local imported, failed, problem = {}, 0, nil
 		for _, str in ipairs(entry.strings or {}) do
-			local dataType, dataKey, data = D:Decode(str)
+			local formatProblem = FormatProblem(E, D, str)
+			local dataType, dataKey, data
+			if formatProblem then
+				problem = formatProblem
+			else
+				dataType, dataKey, data = D:Decode(str)
+			end
 			if not dataType or type(data) ~= "table" then
 				failed = failed + 1
 			elseif dataType == "profile" then
@@ -92,7 +139,7 @@ UII:RegisterModule({
 		end
 
 		if #imported == 0 then
-			return false, "none of the ElvUI strings could be read"
+			return false, problem or "none of the ElvUI strings could be read"
 		end
 
 		MarkInstalled(E)
@@ -103,7 +150,7 @@ UII:RegisterModule({
 
 		local message = table.concat(imported, ", ")
 		if failed > 0 then
-			message = message .. (" (%d string(s) unreadable)"):format(failed)
+			message = message .. (" (%d string(s) unreadable%s)"):format(failed, problem and ": " .. problem or "")
 		end
 		return true, message
 	end,

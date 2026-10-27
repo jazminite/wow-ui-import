@@ -4,7 +4,7 @@ local UII = ns.UII
 local WIDTH, HEIGHT = 660, 600
 local PAGE_WIDTH = WIDTH - 40
 
-local GREEN, RED, GRAY, GOLD = "|cff40ff40", "|cffff5555", "|cff999999", "|cffffd100"
+local GREEN, RED, GRAY, GOLD, ORANGE = "|cff40ff40", "|cffff5555", "|cff999999", "|cffffd100", "|cffff9933"
 
 local frame, pages, tabs = nil, {}, {}
 
@@ -174,7 +174,7 @@ local function BuildImportPage(page)
 	local info = CreateLabel(page, "", "GameFontHighlight")
 	info:SetPoint("TOPLEFT", input.box, "BOTTOMLEFT", 0, -38)
 	info:SetWidth(PAGE_WIDTH)
-	info:SetHeight(30)
+	info:SetHeight(44)
 	info:SetJustifyV("TOP")
 
 	local profileLabel = CreateLabel(page, "Profile name:")
@@ -246,6 +246,26 @@ local function BuildImportPage(page)
 		ShowItems(nil)
 	end
 
+	local function ShowPack(pack)
+		state.pack = pack
+		local details = {}
+		if pack.author and pack.author ~= "" then
+			details[#details + 1] = "by " .. pack.author
+		end
+		if pack.created then
+			details[#details + 1] = "made " .. date("%Y-%m-%d", pack.created)
+		end
+		local lines = { GOLD .. (pack.name or "Unnamed pack") .. "|r  " .. table.concat(details, ", ") }
+		for _, missing in ipairs(UII:GetMissingRequirements(pack)) do
+			lines[#lines + 1] = ORANGE .. ("Needs %s for %s, which isn't loaded. The import still works, but those fall back to defaults."):format(
+				missing.title or missing.addon, missing.why or "some settings") .. "|r"
+		end
+		info:SetText(table.concat(lines, "\n"))
+		profileInput:SetText(pack.name or UII.DEFAULT_PROFILE_NAME)
+		summary:SetText("")
+		ShowItems(UII:GetPackContents(pack))
+	end
+
 	local function Read()
 		local text = input:GetText()
 		if not text:match("%S") then
@@ -257,18 +277,7 @@ local function BuildImportPage(page)
 			Reset(RED .. err .. "|r")
 			return
 		end
-		state.pack = pack
-		local details = {}
-		if pack.author and pack.author ~= "" then
-			details[#details + 1] = "by " .. pack.author
-		end
-		if pack.created then
-			details[#details + 1] = "made " .. date("%Y-%m-%d", pack.created)
-		end
-		info:SetText(GOLD .. (pack.name or "Unnamed pack") .. "|r  " .. table.concat(details, ", "))
-		profileInput:SetText(pack.name or UII.DEFAULT_PROFILE_NAME)
-		summary:SetText("")
-		ShowItems(UII:GetPackContents(pack))
+		ShowPack(pack)
 	end
 
 	-- Read shortly after typing/pasting stops, so huge pastes are parsed once.
@@ -359,8 +368,13 @@ local function BuildImportPage(page)
 				button = CreateButton(page, bundled.name, 140)
 				button:SetPoint("LEFT", previous, "RIGHT", 8, 0)
 				button:SetScript("OnClick", function()
-					input:SetText(bundled.text)
-					Read()
+					if bundled.pack then
+						input:SetText("")
+						ShowPack(bundled.pack)
+					else
+						input:SetText(bundled.text)
+						Read()
+					end
 				end)
 				state.packButtons[index] = button
 			end
