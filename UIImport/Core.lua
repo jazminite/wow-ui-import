@@ -292,10 +292,39 @@ end
 -- Bundled packs
 --------------------------------------------------------------------------------
 
--- Ship a pack inside the addon so it shows up as a one-click choice (see Packs.lua).
-function UII:RegisterPack(name, text)
-	assert(type(name) == "string" and type(text) == "string", "RegisterPack: expected (name, text)")
-	self.packs[#self.packs + 1] = { name = name, text = text }
+--[[
+Ship a pack inside the addon so it shows up as a one-click choice (see Packs.lua).
+Pass either (name, importString) or a pack table holding each addon's own
+export strings, which needs no trip into the game to build:
+
+  UII:RegisterPack({
+    name = "My UI",
+    author = "Me",
+    requires = { { addon = "SharedMedia", why = "fonts" } },  -- optional
+    addons = { ElvUI = { strings = { "!E2!..." } } },
+  })
+]]
+function UII:RegisterPack(nameOrPack, text)
+	if type(nameOrPack) == "table" then
+		local pack = nameOrPack
+		assert(type(pack.name) == "string" and type(pack.addons) == "table", "RegisterPack: a pack table needs a name and an addons table")
+		pack.uii = pack.uii or self.FORMAT_VERSION
+		self.packs[#self.packs + 1] = { name = pack.name, pack = pack }
+	else
+		assert(type(nameOrPack) == "string" and type(text) == "string", "RegisterPack: expected (name, text) or a pack table")
+		self.packs[#self.packs + 1] = { name = nameOrPack, text = text }
+	end
+end
+
+-- Returns the pack's `requires` entries whose addon isn't loaded.
+function UII:GetMissingRequirements(pack)
+	local missing = {}
+	for _, requirement in ipairs(pack.requires or {}) do
+		if not IsAddOnLoaded(requirement.addon) then
+			missing[#missing + 1] = requirement
+		end
+	end
+	return missing
 end
 
 --------------------------------------------------------------------------------

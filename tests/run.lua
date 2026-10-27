@@ -44,7 +44,7 @@ local function boot(opts)
 	mocks.reset()
 	mocks.installWoW()
 	local libs = mocks.installLibStub()
-	if opts.elvui ~= false then mocks.installElvUI() end
+	if opts.elvui ~= false then mocks.installElvUI(type(opts.elvui) == "table" and opts.elvui or nil) end
 	if opts.plater ~= false then mocks.installPlater() end
 	if opts.details ~= false then mocks.installDetails() end
 	if opts.tiptac ~= false then mocks.installTipTac(libs) end
@@ -325,6 +325,135 @@ test("ui: build tab creates a string", function()
 	end)
 	assert(output, "output box holds the string")
 	assert(UII:ReadPack(output.value), "string reads back")
+end)
+
+local function importByKey(UII, pack, opts)
+	local byKey = {}
+	for _, result in ipairs(UII:ImportPack(pack, opts or {})) do
+		byKey[result.key] = result
+	end
+	return byKey
+end
+
+test("importing plater turns elvui nameplates off", function()
+	local UII = boot()
+	local pack = assert(UII:ReadPack((buildFromCurrent(UII))))
+	local byKey = importByKey(UII, pack)
+	eq(ElvUI[1].private.nameplates.enable, false, "live private")
+	eq(ElvPrivateDB.profiles["Tester - Realm"].nameplates.enable, false, "stored private")
+	assert(byKey.Plater.message:find("ElvUI nameplates turned off"), byKey.Plater.message)
+
+	-- Also when the pack's ElvUI part isn't imported at all.
+	UII = boot()
+	byKey = importByKey(UII, pack, { selected = { Plater = true } })
+	eq(ElvUI[1].private.nameplates.enable, false, "Plater-only import")
+	eq(#mocks.find("ElvUI.SetImportedProfile"), 0, "ElvUI profile untouched")
+end)
+
+test("elvui nameplates are left alone without plater", function()
+	local UII = boot()
+	local pack = assert(UII:ReadPack((buildFromCurrent(UII))))
+	UII:ImportPack(pack, { selected = { ElvUI = true } })
+	eq(ElvUI[1].private.nameplates.enable, true, "untouched")
+
+	UII = boot({ plater = false })
+	UII:ImportPack(pack, {})
+	eq(ElvUI[1].private.nameplates.enable, true, "untouched when Plater isn't installed")
+
+	-- Already off: nothing to report.
+	UII = boot()
+	ElvUI[1].private.nameplates.enable = false
+	local byKey = importByKey(UII, pack)
+	assert(not byKey.Plater.message:find("ElvUI"), byKey.Plater.message)
+end)
+
+test("an elvui too old for the string says to update it, and plater still takes over", function()
+	local UII = boot({ elvui = { exportPrefix = "!E1!" } })
+	local text = assert(UII:BuildPack({
+		name = "Fojji DPS / Tank",
+		sources = { ElvUI = { text = "!E2!profile:Fojji" }, Plater = { text = "" } },
+	}))
+	local pack = assert(UII:ReadPack(text))
+	mocks.reset()
+	local byKey = importByKey(UII, pack)
+
+	eq(byKey.ElvUI.status, "failed", "ElvUI status")
+	assert(byKey.ElvUI.message:find("needs a newer ElvUI than the installed v15.13"), byKey.ElvUI.message)
+	assert(byKey.ElvUI.message:find("Update ElvUI"), byKey.ElvUI.message)
+	eq(#mocks.find("ElvUI.Decode"), 0, "ElvUI's decoder (which prints chat errors) not called")
+	eq(byKey.Plater.status, "ok", "Plater still imports")
+	eq(ElvUI[1].private.nameplates.enable, false, "ElvUI nameplates off")
+end)
+
+test("an old-format elvui string in a current elvui asks for a fresh export", function()
+	local UII = boot()
+	local pack = assert(UII:ReadPack(assert(UII:BuildPack({ sources = { ElvUI = { text = "!E1!profile:Old" } } }))))
+	local byKey = importByKey(UII, pack)
+	eq(byKey.ElvUI.status, "failed", "status")
+	assert(byKey.ElvUI.message:find("fresh export"), byKey.ElvUI.message)
+end)
+
+test("the fojji packs are bundled and well-formed", function()
+	local UII = boot()
+	local bundled = {}
+	for _, entry in ipairs(UII.packs) do
+		bundled[entry.name] = entry.pack
+	end
+	local dps, healer = bundled["Fojji DPS / Tank"], bundled["Fojji Healer"]
+	assert(dps and healer, "both packs registered")
+
+	for name, pack in pairs({ dps = dps, healer = healer }) do
+		eq(pack.author, "Fojji", name .. " author")
+		eq(pack.requires[1].addon, "FojjiCore", name .. " requirement")
+		local keys = {}
+		for key in pairs(pack.addons) do
+			keys[#keys + 1] = key
+		end
+		table.sort(keys)
+		eq(table.concat(keys, ","), "ElvUI,Plater", name .. " addons")
+		local elv, plater = pack.addons.ElvUI.strings[1], pack.addons.Plater.strings[1]
+		assert(elv:find("^!E2![%w+/=]+$"), name .. " ElvUI string")
+		assert(plater:find("^!PLATER:2![%w+/=]+$"), name .. " Plater string")
+		assert(#elv > 1000 and #plater > 10000, name .. " strings look complete")
+	end
+
+	assert(dps.addons.ElvUI.strings[1] ~= healer.addons.ElvUI.strings[1], "different ElvUI profiles")
+	eq(dps.addons.Plater.strings[1], healer.addons.Plater.strings[1], "same Plater profile")
+	assert(dps.addons ~= healer.addons, "packs don't share tables")
+
+	UII:ShowWindow("import")
+	assert(mocks.findButton("Fojji DPS / Tank") and mocks.findButton("Fojji Healer"), "a button for each pack")
+end)
+
+test("ui: bundled pack tables load with one click and warn about missing requirements", function()
+	local UII = boot()
+	UIImport:RegisterPack({
+		name = "Mock Pack",
+		author = "Someone",
+		requires = { { addon = "FojjiCore", why = "fonts and textures" } },
+		addons = { ElvUI = { strings = { "!E2!profile:Theirs" } } },
+	})
+	UII:ShowWindow("import")
+	local function warning()
+		return mocks.findWidget(function(w)
+			return w.kind == "FontString" and (w.text or ""):find("Needs FojjiCore")
+		end)
+	end
+
+	mocks.findButton("Mock Pack"):Click()
+	assert(warning(), "warning shown while FojjiCore is missing")
+	local importButton = mocks.findButton("Import Pack")
+	eq(importButton.enabled, true, "import enabled")
+
+	mocks.loadedAddOns.FojjiCore = true
+	mocks.findButton("Mock Pack"):Click()
+	eq(warning(), nil, "no warning once FojjiCore is loaded")
+
+	mocks.reset()
+	importButton:Click()
+	StaticPopupDialogs.UIIMPORT_CONFIRM.OnAccept(nil, mocks.popups[#mocks.popups].data)
+	local elv = mocks.find("ElvUI.SetImportedProfile")[1]
+	eq(elv.args[2], "Mock Pack", "profile named after the pack")
 end)
 
 test("slash commands open the window", function()

@@ -2,7 +2,7 @@
 ## Title: UI Import
 ## Notes: Paste one string to set up ElvUI, Plater, TipTac, Details! and more.
 ## Author: Jazminite
-## Version: 0.1.0
+## Version: 0.2.0
 ## SavedVariables: UIImportDB
 ## OptionalDeps: ElvUI, Plater, Details, TipTac
 
@@ -15,4 +15,5 @@ Modules\TipTac.lua
 Modules\Details.lua
 
 Packs.lua
+Packs\Fojji.lua
 UI.lua

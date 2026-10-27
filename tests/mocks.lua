@@ -343,10 +343,21 @@ end
 -- Target addons
 --------------------------------------------------------------------------------
 
-function M.installElvUI()
+-- opts.exportPrefix: the string format this ElvUI reads. "!E2!" is current;
+-- "!E1!" acts like ElvUI v15.13 and older.
+function M.installElvUI(opts)
+	opts = opts or {}
+	local prefix = opts.exportPrefix or "!E2!"
 	local D = {}
+	function D:GetImportStringType(str)
+		return (str:sub(1, #prefix) == prefix and "Deflate") or (str:find("^{") and "Table") or ""
+	end
 	function D:Decode(str)
-		local dataType, key = str:match("^!E2!(%a+):(.*)$")
+		record("ElvUI.Decode", str)
+		if self:GetImportStringType(str) ~= "Deflate" then
+			return
+		end
+		local dataType, key = str:sub(#prefix + 1):match("^(%a+):(.*)$")
 		if not dataType then
 			return
 		end
@@ -362,10 +373,13 @@ function M.installElvUI()
 		return dataType, "!E2!" .. dataType .. ":" .. (dataType == "profile" and "Current" or "")
 	end
 
+	-- Like real ElvUI: the live private table is the stored one, with defaults
+	-- (nameplates on) filled in.
 	local E = {
 		version = 99.9,
+		versionString = prefix == "!E1!" and "15.13" or "16.00",
 		mynameRealm = "Tester - Realm",
-		private = {},
+		private = { nameplates = { enable = true } },
 	}
 	function E:GetModule(name)
 		return name == "Distributor" and D or nil
@@ -374,7 +388,7 @@ function M.installElvUI()
 		record("ElvUI.StaticPopup_Hide", name)
 	end
 	_G.ElvUI = { E }
-	_G.ElvPrivateDB = { profileKeys = { ["Tester - Realm"] = "Tester - Realm" }, profiles = { ["Tester - Realm"] = {} } }
+	_G.ElvPrivateDB = { profileKeys = { ["Tester - Realm"] = "Tester - Realm" }, profiles = { ["Tester - Realm"] = E.private } }
 	M.loadedAddOns.ElvUI, M.installedAddOns.ElvUI = true, true
 	return E, D
 end
