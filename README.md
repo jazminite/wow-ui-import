@@ -4,12 +4,12 @@ A World of Warcraft addon for **TBC Classic Anniversary** that sets up several a
 
 Supported out of the box:
 
-| Addon | What gets imported |
-|---|---|
-| ElvUI | profile, private (per-character) and global settings |
-| Plater | profile (including its mods and scripts) |
-| TipTac Reborn | settings |
-| Details! Damage Meter | profile |
+| Addon                 | What gets imported                                   |
+|-----------------------|------------------------------------------------------|
+| ElvUI                 | profile, private (per-character) and global settings |
+| Plater                | profile (including its mods and scripts)             |
+| TipTac Reborn         | settings                                             |
+| Details! Damage Meter | profile                                              |
 
 You can add more addons by writing a small module (see [Adding an addon](#adding-an-addon)).
 
@@ -23,10 +23,10 @@ World of Warcraft\_anniversary_\Interface\AddOns\UIImport
 
 ## Included packs
 
-| Pack | Addons | Needs |
-|---|---|---|
-| Fojji DPS / Tank | ElvUI ([Fojji - ElvUI Standard](https://wago.io/Fojji-ElvUI)), Plater ([Fojji - Plater Profile](https://wago.io/Fojji-Plater)) | [FojjiCore](https://curseforge.com/wow/addons/fojjicore) for fonts and textures |
-| Fojji Healer | ElvUI ([Fojji - ElvUI Healer](https://wago.io/Fojji-ElvUI-Healer)), Plater ([Fojji - Plater Profile](https://wago.io/Fojji-Plater)) | [FojjiCore](https://curseforge.com/wow/addons/fojjicore) for fonts and textures |
+| Pack             | Addons                                                                                              | Needs                                                                           |
+|------------------|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Fojji DPS / Tank | [ElvUI Profile](https://wago.io/Fojji-ElvUI), [Plater Profile](https://wago.io/Fojji-Plater)        | [FojjiCore](https://curseforge.com/wow/addons/fojjicore) for fonts and textures |
+| Fojji Healer     | [ElvUI Profile](https://wago.io/Fojji-ElvUI-Healer), [Plater Profile](https://wago.io/Fojji-Plater) | [FojjiCore](https://curseforge.com/wow/addons/fojjicore) for fonts and textures |
 
 Pick one with its button at the top of the `/uii` window. Fojji made these profiles; they're copied from the Wago pages linked above.
 
@@ -75,19 +75,19 @@ UII:RegisterPack({
 
 ### Where each addon's own export string comes from
 
-| Addon | Where to find its export |
-|---|---|
-| ElvUI | `/ec` → Profiles → Export Profile, using the **Text** format (the string starts with `!E2!`) |
-| Plater | `/plater` → Profiles → Export Profile |
-| TipTac Reborn | `/tiptac` → Profiles → Export Settings |
-| Details! | `/details options` → Profiles → Export Profile |
+| Addon         | Where to find its export                                                                     |
+|---------------|----------------------------------------------------------------------------------------------|
+| ElvUI         | `/ec` → Profiles → Export Profile, using the **Text** format (the string starts with `!E2!`) |
+| Plater        | `/plater` → Profiles → Export Profile                                                        |
+| TipTac Reborn | `/tiptac` → Profiles → Export Settings                                                       |
+| Details!      | `/details options` → Profiles → Export Profile                                               |
 
 ## Commands
 
-| Command | Does |
-|---|---|
-| `/uii` | open the import window |
-| `/uii build` | open the pack builder |
+| Command       | Does                                                 |
+|---------------|------------------------------------------------------|
+| `/uii`        | open the import window                               |
+| `/uii build`  | open the pack builder                                |
 | `/uii status` | list the supported addons and whether each is loaded |
 
 ## Safety
